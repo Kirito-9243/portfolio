@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --background: #05070f;
+  --foreground: #e8e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-display: var(--font-pirata-one);
+  --font-sans: var(--font-rajdhani);
+}
+
+/* Sea palette — mirrors src/data/worldMap.ts so code and design never drift apart */
+@theme {
+  --color-abyss: #05070f;      /* deep ocean / page background */
+  --color-abyss-light: #0d1220; /* panels, cards, raised surfaces */
+  --color-east-blue: #00d4ff;   /* About Me */
+  --color-west-blue: #a855f7;   /* Education */
+  --color-north-blue: #3b82f6;  /* Skills */
+  --color-south-blue: #f59e0b;  /* Interests */
+  --color-grand-line: #fbbf24;  /* Journey / Grand Line path */
+  --color-new-world: #ef4444;   /* Future goals */
+  --color-calm-belt: #1e293b;   /* LLM ambient layer */
+}
+
+body {
+  background: var(--color-abyss);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+}
