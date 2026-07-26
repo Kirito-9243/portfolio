@@ -1,29 +1,150 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useGLTF } from "@react-three/drei";
+import { hash } from "@/lib/hash";
 
-// Three.js needs a real DOM/WebGL context, so this loads client-side only
-const Scene = dynamic(() => import("@/components/shared/Scene"), { ssr: false });
+const LandingScene = dynamic(() => import("@/components/landing/LandingScene"), { ssr: false });
+
+// Temporary destination until Phase 2 builds the real world route --
+// character-test is the proven character-controller foundation Phase 2
+// builds on, so arriving there (rough placeholder text and all) is the
+// honest current state, not a bug.
+const WORLD_ROUTE = "/character-test";
+const FLASH_DURATION_MS = 700;
+const BURST_DURATION_MS = 850;
+
+const BURST_COLORS = ["#5ec8f0", "#8fd9ff", "#a78bfa", "#f472b6", "#facc15", "#4ade80", "#f8fafc", "#38bdf8"];
+const BURST_COUNT = 48;
 
 export default function Home() {
+  const router = useRouter();
+  const [transitioning, setTransitioning] = useState(false);
+  const [showBurst, setShowBurst] = useState(false);
+
+  const burstLines = useMemo(
+    () =>
+      Array.from({ length: BURST_COUNT }, (_, i) => {
+        const seed = i + 1;
+        return {
+          id: i,
+          angle: (i / BURST_COUNT) * 360 + (hash(seed) - 0.5) * 6,
+          color: BURST_COLORS[Math.floor(hash(seed * 2.1) * BURST_COLORS.length)],
+          length: 60 + hash(seed * 3.7) * 50,
+          width: 3 + hash(seed * 5.3) * 6,
+          delay: hash(seed * 7.9) * 0.15,
+        };
+      }),
+    []
+  );
+
+  useEffect(() => {
+    // Warm the destination from the moment the landing page loads --
+    // route code via Next's own prefetch, and the heavy GLB asset via
+    // drei's preload -- so by the time the flash+burst sequence finishes,
+    // arriving feels instant instead of picking up mid-load.
+    router.prefetch(WORLD_ROUTE);
+    useGLTF.preload("/models/Soldier.glb");
+  }, [router]);
+
+  function handleEnter() {
+    setTransitioning(true);
+    setTimeout(() => setShowBurst(true), FLASH_DURATION_MS);
+    setTimeout(() => router.push(WORLD_ROUTE), FLASH_DURATION_MS + BURST_DURATION_MS);
+  }
+
   return (
     <main className="relative h-screen w-full overflow-hidden bg-abyss">
-      <Scene />
+      <LandingScene />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, delay: 0.3 }}
-        className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end pb-16 text-center"
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: transitioning ? 0 : 1, y: 0 }}
+        transition={{ duration: transitioning ? 0.3 : 1, delay: transitioning ? 0 : 0.3 }}
+        className="pointer-events-none absolute inset-x-0 top-16 text-center"
       >
-        <h1 className="font-display text-4xl text-grand-line drop-shadow-[0_0_12px_rgba(251,191,36,0.5)] sm:text-6xl">
-          The Grand Line
+        <h1 className="font-display text-4xl text-grand-line drop-shadow-[0_0_14px_rgba(212,169,79,0.4)] sm:text-6xl">
+          Welcome to My Portfolio
         </h1>
-        <p className="mt-3 font-sans text-sm uppercase tracking-[0.3em] text-east-blue">
-          Phase 1 — the world is forming
+        <p className="mt-3 font-sans text-xs uppercase tracking-[0.35em] text-parchment/60 sm:text-sm">
+          Kirito &middot; Final-Year CS
         </p>
       </motion.div>
+
+      <motion.button
+        onClick={handleEnter}
+        disabled={transitioning}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: transitioning ? 0 : 1, y: 0 }}
+        transition={{ duration: transitioning ? 0.3 : 1, delay: transitioning ? 0 : 0.6 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.97 }}
+        className="absolute bottom-24 left-1/2 -translate-x-1/2 rounded-full border border-grand-line/50 bg-abyss-light/60 px-8 py-3 font-sans text-sm uppercase tracking-[0.3em] text-parchment backdrop-blur-sm transition-colors hover:border-grand-line hover:bg-abyss-light/90"
+      >
+        Link Start
+      </motion.button>
+
+      {/* Phase 1 of the transition: light-blue flash, replaces the gold one */}
+      <AnimatePresence>
+        {transitioning && (
+          <motion.div
+            key="flash"
+            initial={{ opacity: 0, scale: 1 }}
+            animate={{ opacity: 1, scale: 2.4 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: FLASH_DURATION_MS / 1000, ease: [0.6, 0, 0.9, 0.2] }}
+            className="pointer-events-none fixed inset-0 z-40"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(224,242,254,1) 0%, rgba(94,200,240,0.9) 35%, rgba(6,15,19,0) 70%)",
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Phase 2 of the transition: the Link Start light-tunnel burst.
+          Also doubles as a loading buffer -- by the time this finishes,
+          router.prefetch + useGLTF.preload have had the full flash+burst
+          duration to warm the destination in the background. */}
+      <AnimatePresence>
+        {showBurst && (
+          <motion.div
+            key="burst"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="pointer-events-none fixed inset-0 z-50 overflow-hidden"
+            style={{ background: "#eaf6ff" }}
+          >
+            {burstLines.map((l) => (
+              <motion.div
+                key={l.id}
+                initial={{ scaleY: 0, opacity: 0 }}
+                animate={{ scaleY: 1, opacity: [0, 1, 1, 0.5] }}
+                transition={{ duration: BURST_DURATION_MS / 1000, delay: l.delay, ease: "easeOut" }}
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  width: `${l.width}px`,
+                  height: `${l.length}vh`,
+                  background: l.color,
+                  borderRadius: "999px",
+                  transformOrigin: "top center",
+                  transform: `translate(-50%, 0) rotate(${l.angle}deg)`,
+                  filter: "blur(1px)",
+                }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
+
+useGLTF.preload("/models/Soldier.glb");

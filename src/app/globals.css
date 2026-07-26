@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #05070f;
-  --foreground: #e8e8f0;
+  --background: #060f13;
+  --foreground: #e8e2d0;
 }
 
 @theme inline {
@@ -12,17 +12,21 @@
   --font-sans: var(--font-rajdhani);
 }
 
-/* Sea palette — mirrors src/data/worldMap.ts so code and design never drift apart */
+/* Sea palette — mirrors src/data/worldMap.ts so code and design never drift apart.
+   Moody/cinematic direction, rooted in map colors (deep sea, aged gold, rust)
+   rather than the neon-cyberpunk first pass. */
 @theme {
-  --color-abyss: #05070f;      /* deep ocean / page background */
-  --color-abyss-light: #0d1220; /* panels, cards, raised surfaces */
-  --color-east-blue: #00d4ff;   /* About Me */
-  --color-west-blue: #a855f7;   /* Education */
-  --color-north-blue: #3b82f6;  /* Skills */
-  --color-south-blue: #f59e0b;  /* Interests */
-  --color-grand-line: #fbbf24;  /* Journey / Grand Line path */
-  --color-new-world: #ef4444;   /* Future goals */
-  --color-calm-belt: #1e293b;   /* LLM ambient layer */
+  --color-abyss: #060f13;        /* void background, teal-tinted near-black */
+  --color-abyss-light: #0d1e24;  /* panels, cards, raised surfaces */
+  --color-ocean: #0d232e;        /* the sphere's base ocean color */
+  --color-parchment: #e4d9bc;    /* aged-map cream, used sparingly for accents/text */
+  --color-east-blue: #3f8fa3;    /* About Me */
+  --color-west-blue: #7a6a95;    /* Education */
+  --color-north-blue: #4a6f9e;   /* Skills */
+  --color-south-blue: #b8874a;   /* Interests */
+  --color-grand-line: #d4a94f;   /* Journey / Grand Line path */
+  --color-new-world: #8c4438;    /* Future goals */
+  --color-calm-belt: #0a1c24;    /* LLM ambient layer */
 }
 
 body {
