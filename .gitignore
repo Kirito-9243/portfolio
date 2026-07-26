@@ -40,5 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# .md files
-*.md
+#.md files (AI generated)
+AGENTS.md
+CLAUDE.md
