@@ -1,11 +1,5 @@
 import * as THREE from "three";
-
-// Classic GLSL-style deterministic pseudo-random hash -- no noise library
-// needed, and the same seed always produces the same coastline.
-function hash(seed: number) {
-  const x = Math.sin(seed) * 43758.5453123;
-  return x - Math.floor(x);
-}
+import { hash } from "./hash";
 
 export type BlobOptions = {
   width: number;

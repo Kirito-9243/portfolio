@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-#.md files (AI generated)
+# .md files (Agent files)
 AGENTS.md
 CLAUDE.md
+
+#UI_folder
+/UI_components/

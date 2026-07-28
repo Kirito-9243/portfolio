@@ -10,7 +10,7 @@ export default function LandingScene() {
       <color attach="background" args={["#060f13"]} />
       <fog attach="fog" args={["#060f13", 8, 18]} />
       <ambientLight intensity={0.4} />
-      <pointLight position={[4, 3, 4]} intensity={0.6} color="#d4a94f" />
+      <pointLight position={[4, 3, 4]} intensity={0.6} color="#5ec8f0" />
       <Suspense fallback={null}>
         <HolographicGlobe />
       </Suspense>

@@ -135,7 +135,8 @@ export default function Home() {
                   background: l.color,
                   borderRadius: "999px",
                   transformOrigin: "top center",
-                  transform: `translate(-50%, 0) rotate(${l.angle}deg)`,
+                  x: "-50%",
+                  rotate: l.angle,
                   filter: "blur(1px)",
                 }}
               />
