@@ -6,8 +6,11 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGLTF } from "@react-three/drei";
 import { hash } from "@/lib/hash";
+import HeroSection from "@/components/landing/HeroSection";
 
-const LandingScene = dynamic(() => import("@/components/landing/LandingScene"), { ssr: false });
+// WorldSection mounts real WebGL (ParticleGlobe + LinkStartButton's shader),
+// so it's excluded from SSR the same way LandingScene was before it.
+const WorldSection = dynamic(() => import("@/components/landing/WorldSection"), { ssr: false });
 
 // Temporary destination until Phase 2 builds the real world route --
 // character-test is the proven character-controller foundation Phase 2
@@ -57,37 +60,13 @@ export default function Home() {
   }
 
   return (
-    <main className="relative h-screen w-full overflow-hidden bg-abyss">
-      <LandingScene />
+    <main className="relative w-full bg-abyss">
+      <HeroSection />
+      <WorldSection onEnter={handleEnter} transitioning={transitioning} />
 
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: transitioning ? 0 : 1, y: 0 }}
-        transition={{ duration: transitioning ? 0.3 : 1, delay: transitioning ? 0 : 0.3 }}
-        className="pointer-events-none absolute inset-x-0 top-16 text-center"
-      >
-        <h1 className="font-display text-4xl text-grand-line drop-shadow-[0_0_14px_rgba(212,169,79,0.4)] sm:text-6xl">
-          Welcome to My Portfolio
-        </h1>
-        <p className="mt-3 font-sans text-xs uppercase tracking-[0.35em] text-parchment/60 sm:text-sm">
-          Kirito &middot; Final-Year CS
-        </p>
-      </motion.div>
-
-      <motion.button
-        onClick={handleEnter}
-        disabled={transitioning}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: transitioning ? 0 : 1, y: 0 }}
-        transition={{ duration: transitioning ? 0.3 : 1, delay: transitioning ? 0 : 0.6 }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.97 }}
-        className="absolute bottom-24 left-1/2 -translate-x-1/2 rounded-full border border-grand-line/50 bg-abyss-light/60 px-8 py-3 font-sans text-sm uppercase tracking-[0.3em] text-parchment backdrop-blur-sm transition-colors hover:border-grand-line hover:bg-abyss-light/90"
-      >
-        Link Start
-      </motion.button>
-
-      {/* Phase 1 of the transition: light-blue flash, replaces the gold one */}
+      {/* Phase 1 of the transition: light-blue flash. Fixed to the
+          viewport (not the scroll position) so it reads correctly
+          regardless of where WorldSection sits on the page. */}
       <AnimatePresence>
         {transitioning && (
           <motion.div
