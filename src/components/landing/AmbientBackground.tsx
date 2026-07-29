@@ -8,12 +8,34 @@ import { motion } from "framer-motion";
  * Adapted from a Framer marketplace component (three soft blobs that drift
  * and cross-fade between colors, blurred into a nebula-like wash). Stripped
  * of Framer's `addPropertyControls` plugin plumbing — this is a plain
- * client component now, themed to the site's holographic-blue "Link Start"
- * palette (see BURST_COLORS in src/app/page.tsx) rather than the original's
- * light/neutral defaults, since it sits behind the dark abyss background.
+ * client component now.
+ *
+ * THEME: currently running LIGHT_THEME (the original Framer component's
+ * own colors) as the live palette. DARK_THEME is the holographic-blue
+ * retint built for the previous pass, kept here as a named backup — do
+ * NOT delete it, it's the starting point for the future dark-mode toggle.
  *
  * Sits absolutely positioned behind other content (see WorldSection.tsx).
  */
+
+export const LIGHT_THEME = {
+  baseColor: "#ffffff",
+  color1: "rgba(0, 122, 255, 0.4)", // blue
+  color2: "rgba(175, 82, 222, 0.3)", // purple
+  color3: "rgba(50, 173, 230, 0.3)", // cyan
+  overlayTint: "rgba(255, 255, 255, 0.5)",
+  overlayOpacity: 0.1,
+};
+
+// Backup for the future dark-mode toggle — do not delete.
+export const DARK_THEME = {
+  baseColor: "transparent",
+  color1: "rgba(94, 200, 240, 0.35)", // holo blue — #5ec8f0
+  color2: "rgba(167, 139, 250, 0.28)", // purple accent — #a78bfa
+  color3: "rgba(56, 189, 248, 0.3)", // sky blue accent — #38bdf8
+  overlayTint: "rgba(224, 242, 254, 0.5)",
+  overlayOpacity: 0.06,
+};
 
 interface AmbientBackgroundProps {
   baseColor?: string;
@@ -23,18 +45,20 @@ interface AmbientBackgroundProps {
   blurAmount?: number;
   speedMultiplier?: number;
   overlayOpacity?: number;
+  overlayTint?: string;
   colorDuration?: number;
   className?: string;
 }
 
 export default function AmbientBackground({
-  baseColor = "transparent",
-  color1 = "rgba(94, 200, 240, 0.35)", // holo blue — #5ec8f0
-  color2 = "rgba(167, 139, 250, 0.28)", // purple accent — #a78bfa
-  color3 = "rgba(56, 189, 248, 0.3)", // sky blue accent — #38bdf8
+  baseColor = LIGHT_THEME.baseColor,
+  color1 = LIGHT_THEME.color1,
+  color2 = LIGHT_THEME.color2,
+  color3 = LIGHT_THEME.color3,
   blurAmount = 60,
   speedMultiplier = 1,
-  overlayOpacity = 0.06,
+  overlayOpacity = LIGHT_THEME.overlayOpacity,
+  overlayTint = LIGHT_THEME.overlayTint,
   colorDuration = 10,
   className,
 }: AmbientBackgroundProps) {
@@ -85,7 +109,7 @@ export default function AmbientBackground({
       <div
         style={{
           ...overlayStyle,
-          backgroundColor: "rgba(224, 242, 254, 0.5)",
+          backgroundColor: overlayTint,
           opacity: overlayOpacity,
           pointerEvents: "none",
         }}

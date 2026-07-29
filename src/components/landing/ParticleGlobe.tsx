@@ -22,10 +22,14 @@ import * as THREE from "three";
  *  - Flattened the nested `layout`/`styling`/`particleSizing`/`interactions`/
  *    `uiCustomization` prop groups (that nesting only existed to organize
  *    Framer's property panel) into one flat, typed props interface.
- *  - Ocean/dot colors retinted from the original light "earth" palette to
- *    the site's holographic blue, and `backgroundColor` now defaults to
- *    transparent so AmbientBackground shows through behind it.
+ *  - `backgroundColor` defaults to transparent (not part of either theme
+ *    below — it's what lets AmbientBackground show through behind the
+ *    globe, independent of light/dark palette).
  *  - `earthMap` defaults to the uploaded /textures/earth-water.png.
+ *
+ * THEME: LIGHT_THEME (the original Framer component's own ocean/dot/marker
+ * colors) is live. DARK_THEME is last pass's holographic-blue retint, kept
+ * as a named backup for the future dark-mode toggle — do not delete it.
  *  - `markers` defaults to a single "DHARWAD, IN" pin; the original
  *    showcase markers (Kinshasa/Tokyo/NY/London/Sydney/São Paulo) are kept
  *    below, commented out, exactly as requested.
@@ -86,6 +90,40 @@ interface ParticleGlobeProps {
   markerTextColor?: string;
   pinColor?: string;
 }
+
+// --- Theme ---
+export const LIGHT_THEME = {
+  oceanColorHighlight: "#FAFAFC",
+  oceanColorDark: "#A2B9DB",
+  oceanColorLight: "#D1E0F2",
+  dotColor: "#FFFFFF",
+  hoverParticleColor: "#C8D7FA",
+  cursorColor: "#D4D4D4",
+  markerBgColor: "#1E1E23",
+  markerIconBgColor: "#2A2A2A",
+  markerActiveBgColor: "#FFFFFF",
+  markerIconColor: "#FFFFFF",
+  markerActiveIconColor: "#111111",
+  markerTextColor: "#FFFFFF",
+  pinColor: "#FFFFFF",
+};
+
+// Backup for the future dark-mode toggle — do not delete.
+export const DARK_THEME = {
+  oceanColorHighlight: "#8fd9ff",
+  oceanColorDark: "#0a1c2e",
+  oceanColorLight: "#3f8fa3",
+  dotColor: "#e0f2fe",
+  hoverParticleColor: "#a78bfa",
+  cursorColor: "#8fd9ff",
+  markerBgColor: "#0d1e24",
+  markerIconBgColor: "#16232a",
+  markerActiveBgColor: "#e0f2fe",
+  markerIconColor: "#e0f2fe",
+  markerActiveIconColor: "#0a1620",
+  markerTextColor: "#e4d9bc",
+  pinColor: "#8fd9ff",
+};
 
 // --- Default markers ---
 // Kept per request: the original showcase pins stay in the file, commented
@@ -199,10 +237,10 @@ export default function ParticleGlobe({
   backgroundColor = "transparent",
   earthMap = "/textures/earth-water.png",
   invertMap = false,
-  oceanColorHighlight = "#8fd9ff",
-  oceanColorDark = "#0a1c2e",
-  oceanColorLight = "#3f8fa3",
-  dotColor = "#e0f2fe",
+  oceanColorHighlight = LIGHT_THEME.oceanColorHighlight,
+  oceanColorDark = LIGHT_THEME.oceanColorDark,
+  oceanColorLight = LIGHT_THEME.oceanColorLight,
+  dotColor = LIGHT_THEME.dotColor,
   dotDensity = 80000,
   rotationSpeed = 0.06,
   globeScale = 1.1,
@@ -212,7 +250,7 @@ export default function ParticleGlobe({
   sizeRandomness = 1,
   enableHover = true,
   hoverDelay = 0,
-  hoverParticleColor = "#a78bfa",
+  hoverParticleColor = LIGHT_THEME.hoverParticleColor,
   lensRadius = 0.45,
   lensMagnification = 0.02,
   lensBulge = 0.02,
@@ -220,16 +258,16 @@ export default function ParticleGlobe({
   markers = DEFAULT_MARKERS,
   markerType = "plus",
   useCustomCursor = true,
-  cursorColor = "#8fd9ff",
+  cursorColor = LIGHT_THEME.cursorColor,
   cursorLineOpacity = 0.2,
   cursorDotSize = 5,
-  markerBgColor = "#0d1e24",
-  markerIconBgColor = "#16232a",
-  markerActiveBgColor = "#e0f2fe",
-  markerIconColor = "#e0f2fe",
-  markerActiveIconColor = "#0a1620",
-  markerTextColor = "#e4d9bc",
-  pinColor = "#8fd9ff",
+  markerBgColor = LIGHT_THEME.markerBgColor,
+  markerIconBgColor = LIGHT_THEME.markerIconBgColor,
+  markerActiveBgColor = LIGHT_THEME.markerActiveBgColor,
+  markerIconColor = LIGHT_THEME.markerIconColor,
+  markerActiveIconColor = LIGHT_THEME.markerActiveIconColor,
+  markerTextColor = LIGHT_THEME.markerTextColor,
+  pinColor = LIGHT_THEME.pinColor,
 }: ParticleGlobeProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
@@ -661,6 +699,25 @@ export default function ParticleGlobe({
     let isHoveringUI = false;
     let hoverStartTimestamp = 0;
 
+    // Guide-line crosshair should only appear once the cursor is close to
+    // the globe itself, not merely anywhere inside the (larger, square)
+    // mount container. Fraction of min(width, height); lower = must get
+    // closer to the globe before the lines fade in.
+    const CURSOR_ACTIVATION_RADIUS_FACTOR = 0.42;
+    const updateCursorVisibility = (clientX: number, clientY: number) => {
+      if (!cursorRef.current || !useCustomCursor) return;
+      const rect = container.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const activationRadius = Math.min(width, height) * CURSOR_ACTIVATION_RADIUS_FACTOR;
+      const near = Math.hypot(x - width / 2, y - height / 2) < activationRadius;
+      const targetOpacity = near ? "1" : "0";
+      if (cursorRef.current.style.opacity !== targetOpacity) {
+        cursorRef.current.style.opacity = targetOpacity;
+      }
+    };
+
+
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
       const btn = target.closest(".marker-button");
@@ -699,11 +756,7 @@ export default function ParticleGlobe({
         previousMousePosition = { x: e.clientX, y: e.clientY };
       }
 
-      if (cursorRef.current && useCustomCursor) {
-        if (cursorRef.current.style.opacity === "0") {
-          cursorRef.current.style.opacity = "1";
-        }
-      }
+      updateCursorVisibility(e.clientX, e.clientY);
     };
 
     const onPointerUp = () => {
@@ -721,10 +774,8 @@ export default function ParticleGlobe({
       }
     };
 
-    const onPointerEnter = () => {
-      if (cursorRef.current && useCustomCursor) {
-        cursorRef.current.style.opacity = "1";
-      }
+    const onPointerEnter = (e: PointerEvent) => {
+      updateCursorVisibility(e.clientX, e.clientY);
     };
 
     container.addEventListener("pointerdown", onPointerDown);
