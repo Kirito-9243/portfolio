@@ -22,16 +22,45 @@ import * as THREE from "three";
  * (src/app/page.tsx's BURST_COLORS) instead of the original neon red/cyan,
  * so the glitch reads as part of the same moment rather than a clashing
  * one-off.
+ *
+ * THEME: LIGHT_THEME is live — background matches the (light) page, border
+ * and text use the opposite (dark) tone for contrast. DARK_THEME (light
+ * border/text on a dark background) is kept as a named backup for the
+ * future dark-mode toggle — do not delete it. `glassColor` (the shader's
+ * rim/specular/star tint) stays the same holo blue across both themes as a
+ * stable accent, since it's an additive-only shader: against a light base
+ * it reads as a softer, edge-concentrated glow rather than the fuller glow
+ * it has on a dark base — that's the shader's own math, not something this
+ * re-theme changes, so don't be surprised if it looks subtler than before.
  */
+
+export const LIGHT_THEME = {
+  baseColor: "#ffffff",
+  glassColor: "#5ec8f0",
+  textColor: "#0a1620",
+  borderColor: "rgba(10, 22, 32, 0.35)",
+  textGlow: "rgba(10, 22, 32, 0.12)",
+};
+
+// Backup for the future dark-mode toggle — do not delete.
+export const DARK_THEME = {
+  baseColor: "#0a1620",
+  glassColor: "#5ec8f0",
+  textColor: "#eaf6ff",
+  borderColor: "rgba(234, 246, 255, 0.15)",
+  textGlow: "rgba(255, 255, 255, 0.3)",
+};
 
 export interface LinkStartButtonProps {
   link?: string;
   text?: string;
   textFont?: React.CSSProperties;
   textColor?: string;
+  textGlow?: string;
   padding?: string;
   baseColor?: string;
   glassColor?: string;
+  borderColor?: string;
   hoverSpeed?: number;
   borderRadius?: number;
   livePreview?: boolean;
@@ -181,10 +210,12 @@ export default function LinkStartButton({
     textTransform: "uppercase",
     lineHeight: 1,
   },
-  textColor = "#eaf6ff",
+  textColor = LIGHT_THEME.textColor,
+  textGlow = LIGHT_THEME.textGlow,
   padding = "22px 56px",
-  baseColor = "#0a1620",
-  glassColor = "#5ec8f0",
+  baseColor = LIGHT_THEME.baseColor,
+  glassColor = LIGHT_THEME.glassColor,
+  borderColor = LIGHT_THEME.borderColor,
   hoverSpeed = 0.6,
   borderRadius = 999,
   livePreview = false,
@@ -367,7 +398,7 @@ export default function LinkStartButton({
     justifyContent: "center",
     boxSizing: "border-box",
     backgroundColor: baseColor,
-    boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 10px 30px -10px rgba(0,0,0,0.5)",
+    boxShadow: `inset 0 0 0 1px ${borderColor}, 0 10px 30px -10px rgba(0,0,0,0.5)`,
     transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, z-index 0s",
     zIndex: 1,
     textDecoration: "none",
@@ -403,13 +434,13 @@ export default function LinkStartButton({
           position: relative;
           display: inline-block;
           pointer-events: none;
-          text-shadow: 0px 2px 10px rgba(255, 255, 255, 0.3);
+          text-shadow: 0px 2px 10px ${textGlow};
         }
         .link-start-text::after {
           content: attr(data-text);
           position: absolute;
           inset: 0;
-          color: #eaf6ff;
+          color: ${textColor};
           text-shadow:
             -3px -3px 0 #facc15,
             3px 3px 0 #5ec8f0;
