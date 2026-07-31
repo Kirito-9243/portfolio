@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRef, useEffect, useCallback } from "react";
 import * as THREE from "three";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 /**
  * LINK START BUTTON
@@ -199,30 +200,35 @@ void main() {
 }
 `;
 
-export default function LinkStartButton({
-  link,
-  text = "Link Start",
-  textFont = {
-    fontFamily: "var(--font-sans)",
-    fontSize: "14px",
-    fontWeight: 600,
-    letterSpacing: "0.3em",
-    textTransform: "uppercase",
-    lineHeight: 1,
-  },
-  textColor = LIGHT_THEME.textColor,
-  textGlow = LIGHT_THEME.textGlow,
-  padding = "22px 56px",
-  baseColor = LIGHT_THEME.baseColor,
-  glassColor = LIGHT_THEME.glassColor,
-  borderColor = LIGHT_THEME.borderColor,
-  hoverSpeed = 0.6,
-  borderRadius = 999,
-  livePreview = false,
-  disabled = false,
-  className,
-  onClick,
-}: LinkStartButtonProps) {
+export default function LinkStartButton(props: LinkStartButtonProps) {
+  const { theme } = useTheme();
+  const active = theme === "dark" ? DARK_THEME : LIGHT_THEME;
+
+  const {
+    link,
+    text = "Link Start",
+    textFont = {
+      fontFamily: "var(--font-sans)",
+      fontSize: "14px",
+      fontWeight: 600,
+      letterSpacing: "0.3em",
+      textTransform: "uppercase",
+      lineHeight: 1,
+    },
+    textColor = active.textColor,
+    textGlow = active.textGlow,
+    padding = "22px 56px",
+    baseColor = active.baseColor,
+    glassColor = active.glassColor,
+    borderColor = active.borderColor,
+    hoverSpeed = 0.6,
+    borderRadius = 999,
+    livePreview = false,
+    disabled = false,
+    className,
+    onClick,
+  } = props;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const hoverRef = useRef<number>(0);
   const clickRef = useRef<number>(0);
