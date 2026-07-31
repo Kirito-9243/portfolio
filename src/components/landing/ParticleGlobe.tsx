@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRef, useEffect } from "react";
 import * as THREE from "three";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 /**
  * PARTICLE GLOBE
@@ -231,44 +232,49 @@ const markerStyle: React.CSSProperties = {
 
 const butteryEase = "cubic-bezier(0.16, 1, 0.3, 1)";
 
-export default function ParticleGlobe({
-  className,
-  style,
-  backgroundColor = "transparent",
-  earthMap = "/textures/earth-water.png",
-  invertMap = false,
-  oceanColorHighlight = LIGHT_THEME.oceanColorHighlight,
-  oceanColorDark = LIGHT_THEME.oceanColorDark,
-  oceanColorLight = LIGHT_THEME.oceanColorLight,
-  dotColor = LIGHT_THEME.dotColor,
-  dotDensity = 80000,
-  rotationSpeed = 0.06,
-  globeScale = 1.1,
-  positionX = 0,
-  positionY = 0,
-  baseSize = 5,
-  sizeRandomness = 1,
-  enableHover = true,
-  hoverDelay = 0,
-  hoverParticleColor = LIGHT_THEME.hoverParticleColor,
-  lensRadius = 0.45,
-  lensMagnification = 0.02,
-  lensBulge = 0.02,
-  lensParticleScale = 1,
-  markers = DEFAULT_MARKERS,
-  markerType = "plus",
-  useCustomCursor = true,
-  cursorColor = LIGHT_THEME.cursorColor,
-  cursorLineOpacity = 0.2,
-  cursorDotSize = 5,
-  markerBgColor = LIGHT_THEME.markerBgColor,
-  markerIconBgColor = LIGHT_THEME.markerIconBgColor,
-  markerActiveBgColor = LIGHT_THEME.markerActiveBgColor,
-  markerIconColor = LIGHT_THEME.markerIconColor,
-  markerActiveIconColor = LIGHT_THEME.markerActiveIconColor,
-  markerTextColor = LIGHT_THEME.markerTextColor,
-  pinColor = LIGHT_THEME.pinColor,
-}: ParticleGlobeProps) {
+export default function ParticleGlobe(props: ParticleGlobeProps) {
+  const { theme } = useTheme();
+  const active = theme === "dark" ? DARK_THEME : LIGHT_THEME;
+
+  const {
+    className,
+    style,
+    backgroundColor = "transparent",
+    earthMap = "/textures/earth-water.png",
+    invertMap = false,
+    oceanColorHighlight = active.oceanColorHighlight,
+    oceanColorDark = active.oceanColorDark,
+    oceanColorLight = active.oceanColorLight,
+    dotColor = active.dotColor,
+    dotDensity = 80000,
+    rotationSpeed = 0.06,
+    globeScale = 1.1,
+    positionX = 0,
+    positionY = 0,
+    baseSize = 5,
+    sizeRandomness = 1,
+    enableHover = true,
+    hoverDelay = 0,
+    hoverParticleColor = active.hoverParticleColor,
+    lensRadius = 0.45,
+    lensMagnification = 0.02,
+    lensBulge = 0.02,
+    lensParticleScale = 1,
+    markers = DEFAULT_MARKERS,
+    markerType = "plus",
+    useCustomCursor = true,
+    cursorColor = active.cursorColor,
+    cursorLineOpacity = 0.2,
+    cursorDotSize = 5,
+    markerBgColor = active.markerBgColor,
+    markerIconBgColor = active.markerIconBgColor,
+    markerActiveBgColor = active.markerActiveBgColor,
+    markerIconColor = active.markerIconColor,
+    markerActiveIconColor = active.markerActiveIconColor,
+    markerTextColor = active.markerTextColor,
+    pinColor = active.pinColor,
+  } = props;
+
   const mountRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const isIntersecting = useRef(false);
@@ -716,7 +722,6 @@ export default function ParticleGlobe({
         cursorRef.current.style.opacity = targetOpacity;
       }
     };
-
 
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
