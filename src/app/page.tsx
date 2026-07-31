@@ -6,6 +6,9 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGLTF } from "@react-three/drei";
 import { hash } from "@/lib/hash";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import NavRail from "@/components/chrome/NavRail";
+import ThemeToggle from "@/components/chrome/ThemeToggle";
 import HeroSection from "@/components/landing/HeroSection";
 
 // WorldSection mounts real WebGL (ParticleGlobe + LinkStartButton's shader),
@@ -60,9 +63,17 @@ export default function Home() {
   }
 
   return (
-    <main className="relative w-full bg-abyss">
-      <HeroSection />
-      <WorldSection onEnter={handleEnter} transitioning={transitioning} />
+    <ThemeProvider>
+      <main className="relative w-full">
+        {/* Page-level chrome — fixed positioning, deliberately siblings of
+            the sections rather than nested inside either one's own
+            motion-animated wrapper (a transformed ancestor breaks
+            `position: fixed`). */}
+        <NavRail />
+        <ThemeToggle />
+
+        <HeroSection />
+        <WorldSection onEnter={handleEnter} transitioning={transitioning} />
 
       {/* Phase 1 of the transition: light-blue flash. Fixed to the
           viewport (not the scroll position) so it reads correctly
@@ -123,7 +134,8 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
+      </main>
+    </ThemeProvider>
   );
 }
 
