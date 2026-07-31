@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Pirata_One, Rajdhani } from "next/font/google";
+import { NO_FLASH_THEME_SCRIPT } from "@/components/theme/ThemeProvider";
 import "./globals.css";
 
 // Display face — map labels, island names, hero title. The adventure/pirate voice.
@@ -31,8 +32,12 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${pirataOne.variable} ${rajdhani.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full bg-abyss text-foreground">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME_SCRIPT }} />
+      </head>
+      <body className="min-h-full bg-background text-foreground">{children}</body>
     </html>
   );
 }
