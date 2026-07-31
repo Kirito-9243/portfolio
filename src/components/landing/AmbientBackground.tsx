@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 /**
  * AMBIENT BACKGROUND
@@ -50,18 +51,23 @@ interface AmbientBackgroundProps {
   className?: string;
 }
 
-export default function AmbientBackground({
-  baseColor = LIGHT_THEME.baseColor,
-  color1 = LIGHT_THEME.color1,
-  color2 = LIGHT_THEME.color2,
-  color3 = LIGHT_THEME.color3,
-  blurAmount = 60,
-  speedMultiplier = 1,
-  overlayOpacity = LIGHT_THEME.overlayOpacity,
-  overlayTint = LIGHT_THEME.overlayTint,
-  colorDuration = 10,
-  className,
-}: AmbientBackgroundProps) {
+export default function AmbientBackground(props: AmbientBackgroundProps) {
+  const { theme } = useTheme();
+  const active = theme === "dark" ? DARK_THEME : LIGHT_THEME;
+
+  const {
+    baseColor = active.baseColor,
+    color1 = active.color1,
+    color2 = active.color2,
+    color3 = active.color3,
+    blurAmount = 60,
+    speedMultiplier = 1,
+    overlayOpacity = active.overlayOpacity,
+    overlayTint = active.overlayTint,
+    colorDuration = 10,
+    className,
+  } = props;
+
   return (
     <div className={className} style={{ ...containerStyle, backgroundColor: baseColor }}>
       {/* BLOB 1 */}
