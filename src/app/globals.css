@@ -1,13 +1,32 @@
 @import "tailwindcss";
 
+/* Light mode is the default (:root, no class needed) — matches the site's
+   current default. Dark mode applies when ThemeProvider adds `.dark` to
+   <html> (see src/components/theme/ThemeProvider.tsx). This is plain CSS
+   custom-property swapping, not Tailwind's `dark:` variant — sidesteps any
+   Tailwind v4 dark-mode-strategy configuration entirely. */
 :root {
+  --background: #ffffff;
+  --foreground: #0a1620;
+  --muted: #5b6672;                 /* secondary/supporting text */
+  --accent: #5ec8f0;                /* holo blue — same in both themes, brand constant */
+  --hero-border: rgba(10, 22, 32, 0.12); /* nav rail lines, dividers */
+}
+
+.dark {
   --background: #060f13;
   --foreground: #e8e2d0;
+  --muted: #9fb0ba;
+  --accent: #5ec8f0;
+  --hero-border: rgba(234, 246, 255, 0.14);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-hero-border: var(--hero-border);
   --font-display: var(--font-pirata-one);
   --font-sans: var(--font-rajdhani);
 }
@@ -30,7 +49,8 @@
 }
 
 body {
-  background: var(--color-abyss);
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
