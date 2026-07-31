@@ -20,7 +20,7 @@ interface WorldSectionProps {
  */
 export default function WorldSection({ onEnter, transitioning }: WorldSectionProps) {
   return (
-    <section className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden">
+    <section id="globe" className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden" style={{ background: "var(--background)" }}>
       <div className="absolute inset-0 z-0">
         <AmbientBackground />
       </div>
