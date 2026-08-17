@@ -6,24 +6,34 @@ import ParticleTextBackground from "./ParticleTextBackground";
 import HeroPortrait from "./HeroPortrait";
 
 /**
- * HERO SECTION
+ * HERO SECTION — v3, rebuilt as explicit stacked layers
  *
- * Two-column desktop layout (text left, portrait right), single column on
- * mobile (text, then portrait). NavRail and ThemeToggle are NOT rendered
- * here — see page.tsx for why (fixed positioning + framer-motion transforms
- * on this section's own animated wrappers don't mix).
+ * Previous version positioned the avatar and text with ad-hoc top/bottom
+ * `vh` offsets inside one shared wrapper. That's fragile — it only adds up
+ * correctly for the exact viewport proportions it was eyeballed against,
+ * which is very likely why the avatar rendered cut off and low on an
+ * actual machine even though the numbers looked reasonable in isolation.
  *
- * PORTRAIT_SRC is the one line to change when the real voxel/pixel-art
- * portrait replaces the placeholder — HeroPortrait itself has no knowledge
- * of what image it's showing.
+ * This version is four independent `absolute inset-0` layers stacked by
+ * z-index, each using flexbox internally to position its own content —
+ * flexbox centering/alignment is self-correcting across viewport sizes in
+ * a way manually-computed vh offsets aren't. This also directly matches
+ * the requested architecture: layer overlap, not shared flow.
  *
- * Assumption flagged in the main response: "Ishwar" is inferred from the
- * particle-text example list, not previously confirmed — it's used here
- * as the single name constant, not scattered through the file.
+ *   Layer 1 (z-10): ParticleTextBackground — "KIRITO", large background type
+ *   Layer 2 (z-20): Avatar — large, top-anchored, the focal point
+ *   Layer 3 (z-30): Hero content — name + title, bottom-left, supporting
+ *   (Layer 0 / ambient background and Layer 4 / nav+toggle are
+ *   intentionally not here — nav/toggle render at the page level in
+ *   page.tsx, and no ambient-background layer exists in Hero today; adding
+ *   one wasn't in the requirements list and "do not add new visual
+ *   effects" is explicit, so it's left as an open slot, not filled.)
+ *
+ * PORTRAIT_SRC still the one line to change for a future asset swap.
  */
 
-const PORTRAIT_SRC = "/images/hero-portrait-placeholder.png";
-const NAME = "Ishwar";
+const PORTRAIT_SRC = "/images/hero-avatar-voxel.png";
+const NAME = "Kirito";
 
 export default function HeroSection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -38,73 +48,67 @@ export default function HeroSection() {
     <section
       id="home"
       ref={sectionRef}
-      className="relative flex min-h-screen w-full items-center overflow-hidden"
+      className="relative h-screen w-full overflow-hidden"
       style={{ background: "var(--background)" }}
     >
-      {/* Background texture — decorative, kept out of tab order and below content */}
-      <div className="absolute inset-0 z-0" aria-hidden>
-        <ParticleTextBackground text={NAME.toUpperCase()} />
-      </div>
+      <motion.div style={{ opacity: contentOpacity, y: contentY }} className="absolute inset-0">
+        {/* Layer 1 — background typography */}
+        <div className="absolute inset-0 z-10" aria-hidden>
+          <ParticleTextBackground text={NAME.toUpperCase()} />
+        </div>
 
-      <motion.div
-        style={{ opacity: contentOpacity, y: contentY }}
-        className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-16 px-6 py-28 sm:px-10 md:grid-cols-2 md:px-16 lg:px-20"
-      >
-        {/* Left — intro text */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <p
-            className="font-sans text-xs uppercase tracking-[0.35em]"
-            style={{ color: "var(--accent)" }}
+        {/* Layer 2 — avatar, large and top-anchored, the focal point.
+            Flex + top padding instead of a computed top offset: this
+            centers/aligns correctly regardless of exact viewport
+            dimensions, which a fixed vh value doesn't. */}
+        <div className="absolute inset-0 z-20 flex justify-center pt-[2vh] sm:pt-[1vh]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="aspect-square h-[min(94vh,92vw)] sm:h-[min(94vh,80vw)] md:h-[min(94vh,62vw)] lg:h-[min(96vh,52vw)]"
           >
-            Portfolio · 2026
-          </p>
+            <HeroPortrait src={PORTRAIT_SRC} alt={NAME} />
+          </motion.div>
+        </div>
 
-          <h1
-            className="mt-4 font-sans text-5xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl"
-            style={{ color: "var(--foreground)" }}
+        {/* Layer 3 — supporting text, bottom-left. Pushed clear of the
+            fixed nav rail (~left-6/8 + expands on hover) with a much
+            larger left offset than before. */}
+        <div className="absolute inset-0 z-30 flex items-end">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="pb-24 pl-28 sm:pl-32 md:pb-28 md:pl-40 lg:pl-48"
           >
-            {NAME}
-          </h1>
-
-          <p
-            className="mt-4 font-sans text-base uppercase tracking-[0.25em] sm:text-lg"
-            style={{ color: "var(--accent)" }}
-          >
-            AI Engineer · Machine Learning Enthusiast
-          </p>
-
-          <p
-            className="mt-6 max-w-md font-sans text-base leading-relaxed sm:text-lg"
-            style={{ color: "var(--muted)" }}
-          >
-            Final-year CS student building systems at the intersection of
-            reinforcement learning and real-time engineering — from a
-            multi-agent crisis-training simulator trained with PPO to
-            production APIs and accessibility tooling shipped end to end.
-            This portfolio is one more system: built, not templated.
-          </p>
-        </motion.div>
-
-        {/* Right — portrait */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.9, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto aspect-[4/5] w-full max-w-sm md:mx-0 md:ml-auto"
-        >
-          <HeroPortrait src={PORTRAIT_SRC} alt={NAME} />
-        </motion.div>
+            <h1
+              className="font-sans text-4xl font-bold leading-none sm:text-5xl md:text-6xl"
+              style={{ color: "var(--foreground)" }}
+            >
+              {NAME}
+            </h1>
+            <p
+              className="mt-3 font-sans text-sm uppercase tracking-[0.2em] sm:text-base"
+              style={{ color: "var(--accent)" }}
+            >
+              AI Engineer
+            </p>
+            <p
+              className="font-sans text-sm uppercase tracking-[0.2em] sm:text-base"
+              style={{ color: "var(--muted)" }}
+            >
+              Machine Learning Enthusiast
+            </p>
+          </motion.div>
+        </div>
       </motion.div>
 
       {/* Blend into the Globe section below — both sides already share
           var(--background), so this is a soft content fade, not a color
           patch over a seam. */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-48"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-48"
         style={{ background: "linear-gradient(to bottom, transparent, var(--background))" }}
         aria-hidden
       />
@@ -114,7 +118,7 @@ export default function HeroSection() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, y: [0, 8, 0] }}
         transition={{ opacity: { duration: 1, delay: 1.1 }, y: { duration: 1.8, repeat: Infinity, ease: "easeInOut" } }}
-        className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2"
+        className="absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2"
         style={{ color: "var(--muted)" }}
       >
         <span className="font-sans text-[10px] uppercase tracking-[0.4em]">Scroll</span>
