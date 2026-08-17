@@ -5,24 +5,22 @@ import { motion } from "framer-motion";
 import { hash } from "@/lib/hash";
 
 /**
- * HERO PORTRAIT
+ * HERO PORTRAIT — v3
  *
- * Image source is a single prop (`src`) — nothing below reads the actual
- * asset path, so swapping the placeholder for the future voxel/pixel-art
- * portrait is a one-line change at the call site (HeroSection.tsx), no
- * layout or effect changes required.
+ * Per feedback: the previous version pixelated the source image on canvas.
+ * That was correct when the source was a plain photo, but the current
+ * source (Reference B) is already finished voxel artwork — running it
+ * through a downscale/upscale pipeline would just muddy a crisp image.
+ * This version renders `src` directly: no pixelation, no blur, no radial
+ * mask, no filters on the base image.
  *
- * Idle: a slow, small vertical float — always running, never glitching.
- * Hover: a short (~700ms), one-shot glitch — RGB-split duplicate layers
- * (CSS filter + mix-blend-mode, sliced/offset via clip-path — the same
- * technique already proven in LinkStartButton's text glitch, adapted for
- * an image) plus a small particle burst — then automatically settles back
- * to idle. No continuous glitching at any point.
+ * `src` is still the only thing that knows about the actual asset — the
+ * caller (HeroSection.tsx) owns the path, so swapping in a future,
+ * improved voxel render is still a one-line change here.
  *
- * The frame (rounded rect + corner brackets) is deliberately content-
- * agnostic — no blur/bloom baked onto the image itself — so it reads fine
- * for both the current photographic placeholder and a future pixel-art
- * version.
+ * The hover glitch (RGB-split ghost layers) and particle burst are kept
+ * from the previous build, just re-pointed at the raw image instead of a
+ * canvas-derived one — flagged as a judgment call in the main response.
  */
 
 interface HeroPortraitProps {
@@ -69,49 +67,22 @@ export default function HeroPortrait({ src, alt = "Portrait", className }: HeroP
       style={{ position: "relative", width: "100%", height: "100%" }}
     >
       <div
-        className={`portrait-frame${isHovering ? " is-hovering" : ""}`}
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          borderRadius: "1.5rem",
-          overflow: "hidden",
-          border: "1px solid var(--hero-border)",
-          boxShadow: isHovering ? "0 0 48px rgba(94, 200, 240, 0.35)" : "0 0 32px rgba(94, 200, 240, 0.12)",
-          transition: "box-shadow 0.4s ease",
-        }}
+        className={`portrait-voxel${isHovering ? " is-hovering" : ""}`}
+        style={{ position: "relative", width: "100%", height: "100%", borderRadius: "1.25rem", overflow: "hidden" }}
       >
-        {/* Base image */}
+        {/* Reference B, used directly — no processing */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}
-          className="portrait-base"
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         />
 
-        {/* RGB-split duplicate layers — invisible at rest, sliced/offset only during the hover glitch */}
+        {/* RGB-split ghost layers — same raw image, invisible until hover */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" aria-hidden className="portrait-ghost portrait-ghost--cyan" style={ghostStyle} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" aria-hidden className="portrait-ghost portrait-ghost--red" style={ghostStyle} />
-
-        {/* Corner brackets — futuristic HUD framing, works regardless of image style */}
-        <svg
-          aria-hidden
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
-        >
-          {[
-            "M4 14 V4 H14",
-            "M86 4 H96 V14",
-            "M96 86 V96 H86",
-            "M14 96 H4 V86",
-          ].map((d) => (
-            <path key={d} d={d} fill="none" stroke="var(--accent)" strokeWidth="1.4" opacity="0.7" />
-          ))}
-        </svg>
 
         {/* Particle burst */}
         {isHovering && (
@@ -154,68 +125,20 @@ export default function HeroPortrait({ src, alt = "Portrait", className }: HeroP
           animation: portrait-glitch-red 0.7s steps(2, end) 1;
         }
         @keyframes portrait-glitch-cyan {
-          0% {
-            opacity: 0;
-            transform: translateX(0);
-            clip-path: inset(0 0 100% 0);
-          }
-          15% {
-            opacity: 0.55;
-            transform: translateX(-8px);
-            clip-path: inset(15% 0 55% 0);
-          }
-          35% {
-            opacity: 0.35;
-            transform: translateX(5px);
-            clip-path: inset(55% 0 10% 0);
-          }
-          55% {
-            opacity: 0.5;
-            transform: translateX(-4px);
-            clip-path: inset(30% 0 40% 0);
-          }
-          75% {
-            opacity: 0.2;
-            transform: translateX(2px);
-            clip-path: inset(60% 0 5% 0);
-          }
-          100% {
-            opacity: 0;
-            transform: translateX(0);
-            clip-path: inset(0 0 100% 0);
-          }
+          0% { opacity: 0; transform: translateX(0); clip-path: inset(0 0 100% 0); }
+          15% { opacity: 0.55; transform: translateX(-8px); clip-path: inset(15% 0 55% 0); }
+          35% { opacity: 0.35; transform: translateX(5px); clip-path: inset(55% 0 10% 0); }
+          55% { opacity: 0.5; transform: translateX(-4px); clip-path: inset(30% 0 40% 0); }
+          75% { opacity: 0.2; transform: translateX(2px); clip-path: inset(60% 0 5% 0); }
+          100% { opacity: 0; transform: translateX(0); clip-path: inset(0 0 100% 0); }
         }
         @keyframes portrait-glitch-red {
-          0% {
-            opacity: 0;
-            transform: translateX(0);
-            clip-path: inset(100% 0 0 0);
-          }
-          15% {
-            opacity: 0.55;
-            transform: translateX(8px);
-            clip-path: inset(50% 0 20% 0);
-          }
-          35% {
-            opacity: 0.35;
-            transform: translateX(-5px);
-            clip-path: inset(8% 0 60% 0);
-          }
-          55% {
-            opacity: 0.5;
-            transform: translateX(4px);
-            clip-path: inset(35% 0 35% 0);
-          }
-          75% {
-            opacity: 0.2;
-            transform: translateX(-2px);
-            clip-path: inset(5% 0 65% 0);
-          }
-          100% {
-            opacity: 0;
-            transform: translateX(0);
-            clip-path: inset(100% 0 0 0);
-          }
+          0% { opacity: 0; transform: translateX(0); clip-path: inset(100% 0 0 0); }
+          15% { opacity: 0.55; transform: translateX(8px); clip-path: inset(50% 0 20% 0); }
+          35% { opacity: 0.35; transform: translateX(-5px); clip-path: inset(8% 0 60% 0); }
+          55% { opacity: 0.5; transform: translateX(4px); clip-path: inset(35% 0 35% 0); }
+          75% { opacity: 0.2; transform: translateX(-2px); clip-path: inset(5% 0 65% 0); }
+          100% { opacity: 0; transform: translateX(0); clip-path: inset(100% 0 0 0); }
         }
       `}</style>
     </motion.div>
@@ -227,7 +150,7 @@ const ghostStyle: React.CSSProperties = {
   inset: 0,
   width: "100%",
   height: "100%",
-  objectFit: "cover",
+  objectFit: "contain",
   opacity: 0,
   pointerEvents: "none",
 };
