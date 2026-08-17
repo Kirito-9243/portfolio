@@ -6,8 +6,11 @@ import { useTheme } from "@/components/theme/ThemeProvider";
 /**
  * THEME TOGGLE
  *
- * Minimal sun/moon switch, not a traditional track-and-thumb toggle (per
- * spec). Rendered at the page level (see page.tsx) alongside NavRail, not
+ * Bare icon only, per feedback — no circular button/border/background.
+ * The clickable hit area is still generous (padding on the <button>
+ * itself), it's just invisible; only the sun/moon glyph renders.
+ *
+ * Rendered at the page level (see page.tsx) alongside NavRail, not
  * nested inside HeroSection — same "fixed" positioning constraint applies:
  * it must sit outside any transformed/animated ancestor.
  *
@@ -26,11 +29,7 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       suppressHydrationWarning
-      className="fixed right-6 top-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-300 sm:right-8 sm:top-8"
-      style={{
-        borderColor: "var(--hero-border)",
-        backgroundColor: "var(--background)",
-      }}
+      className="fixed right-6 top-6 z-40 flex items-center justify-center p-2 opacity-90 transition-opacity duration-300 hover:opacity-100 sm:right-8 sm:top-8"
     >
       <AnimatePresence mode="wait" initial={false}>
         {isDark ? (
