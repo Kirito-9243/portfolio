@@ -35,31 +35,60 @@ const NAV_ITEMS: NavItem[] = [
 export default function NavRail() {
   const [activeId, setActiveId] = useState<string>("home");
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const ratiosRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
-    const targets = NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
-      (el): el is HTMLElement => el !== null
-    );
-    if (targets.length === 0) return;
-
-    observerRef.current = new IntersectionObserver(
+    // IntersectionObserver callbacks only report entries whose ratio just
+    // crossed a threshold — NOT a full snapshot of every observed element
+    // every time. Keeping a persistent map of every section's most recent
+    // ratio and recomputing "best" across the whole map (not just the
+    // current batch) is what makes the comparison correct.
+    const observer = new IntersectionObserver(
       (entries) => {
-        // Pick whichever observed section has the most viewport coverage
-        // right now, rather than reacting to every crossing independently.
-        let best: { id: string; ratio: number } | null = null;
         for (const entry of entries) {
-          if (entry.isIntersecting && (!best || entry.intersectionRatio > best.ratio)) {
-            best = { id: entry.target.id, ratio: entry.intersectionRatio };
+          ratiosRef.current.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        let bestId: string | null = null;
+        let bestRatio = 0;
+        for (const [id, ratio] of ratiosRef.current) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestId = id;
           }
         }
-        if (best) setActiveId(best.id);
+        if (bestId) setActiveId(bestId);
       },
-      { threshold: [0.3, 0.5, 0.7] }
+      { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] }
     );
 
-    targets.forEach((el) => observerRef.current?.observe(el));
-    return () => observerRef.current?.disconnect();
+    // The actual root cause of the "stuck on Home" bug: WorldSection is
+    // dynamically imported (`ssr: false`), so #globe doesn't exist in the
+    // DOM yet when this effect first runs on mount — a plain
+    // getElementById-once approach silently never observes it at all,
+    // Home stays the only entry ever in the ratio map, and activeId never
+    // moves. A MutationObserver picks up sections as they mount late,
+    // which also makes this correct for any future section (Projects,
+    // Skills, Contact) regardless of how it's loaded.
+    const observedIds = new Set<string>();
+    const tryObserveAll = () => {
+      for (const item of NAV_ITEMS) {
+        if (observedIds.has(item.id)) continue;
+        const el = document.getElementById(item.id);
+        if (el) {
+          observer.observe(el);
+          observedIds.add(item.id);
+        }
+      }
+    };
+
+    tryObserveAll();
+    const mutationObserver = new MutationObserver(tryObserveAll);
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
   }, []);
 
   const handleNavigate = (item: NavItem) => {
