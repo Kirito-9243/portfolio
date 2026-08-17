@@ -4,23 +4,27 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 
 /**
- * PARTICLE TEXT BACKGROUND
+ * PARTICLE TEXT BACKGROUND — v3
  *
- * Adapted from the project's ParticleText.tsx (mouse-reactive canvas
- * particles forming text). Used here strictly as a background texture
- * behind Hero's real content — per spec, never the readable headline.
- * Kept deliberately low-opacity/low-density so it reads as ambient
- * texture, not a second headline competing with the real one.
+ * REAL BUG FIXED: `ctx.font` on a canvas 2D context does not resolve CSS
+ * custom properties — `ctx.font = "800 100px var(--font-sans)"` is an
+ * invalid font string as far as the canvas font parser is concerned, and
+ * per spec an invalid assignment is silently ignored, leaving `ctx.font`
+ * at its previous value (the browser default, ~10px sans-serif) rather
+ * than throwing. That happened on BOTH the trial measurement and the
+ * final draw call, so every scaling calculation in the previous version
+ * was operating on a ~10px measurement and then drawing at the browser
+ * default regardless of the computed result — confirmed directly against
+ * a real canvas before writing this fix, not assumed. Font family is now
+ * a hardcoded, always-valid stack; `var(--font-sans)` never reaches
+ * canvas again.
  *
- * Framer's `addPropertyControls`/`useIsStaticRenderer` plugin plumbing is
- * removed (not installed here, meaningless outside Framer); otherwise the
- * particle-physics logic (mouse repel + spring-return) is unchanged from
- * the source file.
- *
- * Sits `position: absolute; inset: 0` behind Hero's foreground content
- * (see HeroSection.tsx) at a low z-index, so normal DOM stacking lets
- * clicks/hover pass through to the foreground UI everywhere except the
- * genuinely empty space around it — no pointer-events tricks needed.
+ * Also, per feedback that this still read as "a small label": widthFraction
+ * raised further (0.92 -> 1.15, deliberately wider than the viewport so it
+ * bleeds off both edges — "the width of the particle text should be larger
+ * than the avatar itself"), opacity raised (0.55 -> 0.7), particle size
+ * bumped slightly, gap widened further to keep particle count reasonable
+ * at the new scale.
  */
 
 interface Particle {
@@ -40,28 +44,36 @@ interface ParticleTextBackgroundProps {
   mouseRadius?: number;
   returnSpeed?: number;
   opacity?: number;
-  font?: CSSProperties;
+  /** Fraction of the canvas width the text should span, 0-1+ (>1 bleeds off both edges). */
+  widthFraction?: number;
+  fontWeight?: number;
   className?: string;
   style?: CSSProperties;
 }
 
-const LIGHT_PARTICLE_COLOR = "#0a1620";
-const DARK_PARTICLE_COLOR = "#e0f2fe";
+const PARTICLE_COLOR = "#5ec8f0"; // var(--accent) — same in both themes
+// Deliberately NOT a CSS variable — see header comment. A generic bold
+// sans-serif stack that every browser can resolve inside a canvas font
+// string; visually close enough to the page's Rajdhani font for
+// background typography that's meant to read as texture, not body copy.
+const CANVAS_FONT_STACK = "Arial, Helvetica, sans-serif";
 
 export default function ParticleTextBackground({
-  text = "ISHWAR",
-  particleColor,
-  particleSize = 1.6,
-  particleDensity = 4,
-  mouseRadius = 90,
+  text = "KIRITO",
+  particleColor = PARTICLE_COLOR,
+  particleSize = 2.6,
+  particleDensity = 14,
+  mouseRadius = 120,
   returnSpeed = 0.05,
-  opacity = 0.16,
-  font = { fontSize: "260px", fontWeight: 800, fontFamily: "var(--font-sans)" },
+  opacity = 0.7,
+  widthFraction = 1.15,
+  fontWeight = 800,
   className,
   style,
 }: ParticleTextBackgroundProps) {
-  const { theme } = useTheme();
-  const resolvedColor = particleColor ?? (theme === "dark" ? DARK_PARTICLE_COLOR : LIGHT_PARTICLE_COLOR);
+  // Kept for API symmetry with the rest of the theme-aware components even
+  // though the particle color no longer varies by theme (see header).
+  useTheme();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
@@ -87,25 +99,28 @@ export default function ParticleTextBackground({
       const width = rect.width;
       const height = rect.height;
 
-      ctx.fillStyle = resolvedColor;
+      // Measure at a trial size, then scale so the text spans
+      // `widthFraction` of the canvas width, regardless of font/text length.
+      const TRIAL_SIZE = 100;
+      ctx.font = `${fontWeight} ${TRIAL_SIZE}px ${CANVAS_FONT_STACK}`;
+      const measuredWidth = ctx.measureText(text).width || TRIAL_SIZE;
+      const targetWidth = width * widthFraction;
+      const fontSize = Math.max(24, (TRIAL_SIZE * targetWidth) / measuredWidth);
+
+      ctx.fillStyle = particleColor;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-
-      const fontSize = parseInt(font.fontSize as string) || 260;
-      const fontWeight = font.fontWeight || 800;
-      const fontFamily = font.fontFamily || "sans-serif";
-      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-
+      ctx.font = `${fontWeight} ${fontSize}px ${CANVAS_FONT_STACK}`;
       ctx.fillText(text, width / 2, height / 2);
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const pixels = imageData.data;
       const particles: Particle[] = [];
-      const gap = Math.max(2, particleDensity);
+      const gap = Math.max(2, particleDensity) * dpr;
 
       for (let y = 0; y < canvas.height; y += gap) {
         for (let x = 0; x < canvas.width; x += gap) {
-          const index = (y * canvas.width + x) * 4;
+          const index = (Math.floor(y) * canvas.width + Math.floor(x)) * 4;
           const alpha = pixels[index + 3];
           if (alpha > 128) {
             const px = x / dpr;
@@ -120,7 +135,7 @@ export default function ParticleTextBackground({
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [text, particleDensity, font, resolvedColor]);
+  }, [text, particleDensity, fontWeight, particleColor, widthFraction]);
 
   // Physics + draw loop.
   useEffect(() => {
@@ -159,7 +174,7 @@ export default function ParticleTextBackground({
         particle.x += particle.vx;
         particle.y += particle.vy;
 
-        ctx.fillStyle = resolvedColor;
+        ctx.fillStyle = particleColor;
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particleSize, 0, Math.PI * 2);
         ctx.fill();
@@ -172,7 +187,7 @@ export default function ParticleTextBackground({
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [isInitialized, particleSize, mouseRadius, returnSpeed, resolvedColor]);
+  }, [isInitialized, particleSize, mouseRadius, returnSpeed, particleColor]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
