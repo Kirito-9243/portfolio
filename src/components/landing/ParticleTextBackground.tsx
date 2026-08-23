@@ -3,30 +3,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 
-/**
- * PARTICLE TEXT BACKGROUND — v3
- *
- * REAL BUG FIXED: `ctx.font` on a canvas 2D context does not resolve CSS
- * custom properties — `ctx.font = "800 100px var(--font-sans)"` is an
- * invalid font string as far as the canvas font parser is concerned, and
- * per spec an invalid assignment is silently ignored, leaving `ctx.font`
- * at its previous value (the browser default, ~10px sans-serif) rather
- * than throwing. That happened on BOTH the trial measurement and the
- * final draw call, so every scaling calculation in the previous version
- * was operating on a ~10px measurement and then drawing at the browser
- * default regardless of the computed result — confirmed directly against
- * a real canvas before writing this fix, not assumed. Font family is now
- * a hardcoded, always-valid stack; `var(--font-sans)` never reaches
- * canvas again.
- *
- * Also, per feedback that this still read as "a small label": widthFraction
- * raised further (0.92 -> 1.15, deliberately wider than the viewport so it
- * bleeds off both edges — "the width of the particle text should be larger
- * than the avatar itself"), opacity raised (0.55 -> 0.7), particle size
- * bumped slightly, gap widened further to keep particle count reasonable
- * at the new scale.
- */
-
 interface Particle {
   x: number;
   y: number;
@@ -52,10 +28,6 @@ interface ParticleTextBackgroundProps {
 }
 
 const PARTICLE_COLOR = "#5ec8f0"; // var(--accent) — same in both themes
-// Deliberately NOT a CSS variable — see header comment. A generic bold
-// sans-serif stack that every browser can resolve inside a canvas font
-// string; visually close enough to the page's Rajdhani font for
-// background typography that's meant to read as texture, not body copy.
 const CANVAS_FONT_STACK = "Arial, Helvetica, sans-serif";
 
 export default function ParticleTextBackground({
@@ -66,13 +38,11 @@ export default function ParticleTextBackground({
   mouseRadius = 120,
   returnSpeed = 0.05,
   opacity = 0.7,
-  widthFraction = 1.15,
+  widthFraction = 0.96,
   fontWeight = 800,
   className,
   style,
 }: ParticleTextBackgroundProps) {
-  // Kept for API symmetry with the rest of the theme-aware components even
-  // though the particle color no longer varies by theme (see header).
   useTheme();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -81,7 +51,6 @@ export default function ParticleTextBackground({
   const animationFrameRef = useRef<number | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Build the particle field from the rendered text's pixel data.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -99,8 +68,6 @@ export default function ParticleTextBackground({
       const width = rect.width;
       const height = rect.height;
 
-      // Measure at a trial size, then scale so the text spans
-      // `widthFraction` of the canvas width, regardless of font/text length.
       const TRIAL_SIZE = 100;
       ctx.font = `${fontWeight} ${TRIAL_SIZE}px ${CANVAS_FONT_STACK}`;
       const measuredWidth = ctx.measureText(text).width || TRIAL_SIZE;
@@ -137,7 +104,6 @@ export default function ParticleTextBackground({
     return () => clearTimeout(timeoutId);
   }, [text, particleDensity, fontWeight, particleColor, widthFraction]);
 
-  // Physics + draw loop.
   useEffect(() => {
     if (!isInitialized) return;
     const canvas = canvasRef.current;
