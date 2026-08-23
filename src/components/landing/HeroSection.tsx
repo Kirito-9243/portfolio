@@ -5,33 +5,6 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import ParticleTextBackground from "./ParticleTextBackground";
 import HeroPortrait from "./HeroPortrait";
 
-/**
- * HERO SECTION — v3, rebuilt as explicit stacked layers
- *
- * Previous version positioned the avatar and text with ad-hoc top/bottom
- * `vh` offsets inside one shared wrapper. That's fragile — it only adds up
- * correctly for the exact viewport proportions it was eyeballed against,
- * which is very likely why the avatar rendered cut off and low on an
- * actual machine even though the numbers looked reasonable in isolation.
- *
- * This version is four independent `absolute inset-0` layers stacked by
- * z-index, each using flexbox internally to position its own content —
- * flexbox centering/alignment is self-correcting across viewport sizes in
- * a way manually-computed vh offsets aren't. This also directly matches
- * the requested architecture: layer overlap, not shared flow.
- *
- *   Layer 1 (z-10): ParticleTextBackground — "KIRITO", large background type
- *   Layer 2 (z-20): Avatar — large, top-anchored, the focal point
- *   Layer 3 (z-30): Hero content — name + title, bottom-left, supporting
- *   (Layer 0 / ambient background and Layer 4 / nav+toggle are
- *   intentionally not here — nav/toggle render at the page level in
- *   page.tsx, and no ambient-background layer exists in Hero today; adding
- *   one wasn't in the requirements list and "do not add new visual
- *   effects" is explicit, so it's left as an open slot, not filled.)
- *
- * PORTRAIT_SRC still the one line to change for a future asset swap.
- */
-
 const PORTRAIT_SRC = "/images/hero-avatar-voxel.png";
 const NAME = "Kirito";
 
@@ -52,16 +25,43 @@ export default function HeroSection() {
       style={{ background: "var(--background)" }}
     >
       <motion.div style={{ opacity: contentOpacity, y: contentY }} className="absolute inset-0">
-        {/* Layer 1 — background typography */}
-        <div className="absolute inset-0 z-10" aria-hidden>
+        {/* Layer 1 — background typography. pointer-events-auto explicitly
+            (it's already the default, but stating it keeps the intent
+            obvious now that the layers above it are deliberately none):
+            this is the layer that needs to actually receive the mouse for
+            the particle repel effect. */}
+        <div className="absolute inset-0 z-10 pointer-events-auto" aria-hidden>
           <ParticleTextBackground text={NAME.toUpperCase()} />
         </div>
 
-        {/* Layer 2 — avatar, large and top-anchored, the focal point.
-            Flex + top padding instead of a computed top offset: this
-            centers/aligns correctly regardless of exact viewport
-            dimensions, which a fixed vh value doesn't. */}
-        <div className="absolute inset-0 z-20 flex justify-center pt-[2vh] sm:pt-[1vh]">
+        {/* Layer 2 — avatar, large and BOTTOM-anchored so the shoulders read
+            as grounded near the viewport edge instead of floating with a
+            gap underneath (that gap was the previous bug: h-[min(94vh,92vw)]
+            means the box is frequently width-bound and shorter than the
+            viewport, and top-anchoring left the leftover space dangling
+            below it). Bottom-anchoring means whatever space the responsive
+            height formula doesn't use collects above the avatar instead,
+            which is what "grounded" actually needs regardless of aspect
+            ratio. The gradient fade + scroll cue near the bottom (further
+            down this file) sit above this layer and soften the avatar's
+            bottom edge rather than hard-cropping it.
+
+            pointer-events-none on this wrapper, with pointer-events-auto
+            re-enabled just on the avatar's own box: this div is
+            `inset-0`, i.e. it covers the ENTIRE hero regardless of how
+            small the visible avatar is within it, and — being on top of
+            Layer 1 in stacking order — an auto (default) pointer-events
+            here was silently swallowing every mousemove over the whole
+            hero before it ever reached the particle-text canvas beneath
+            it.
+
+            The sizing box below is intentionally NOT pointer-events-auto:
+            HeroPortrait now owns a precisely clip-path'd hit-region sized
+            to the actual visible silhouette (not the whole square), so
+            the empty transparent corners of the square correctly fall
+            through all the way to the canvas instead of being caught here
+            one level too early. See HeroPortrait.tsx. */}
+        <div className="absolute inset-0 z-20 flex items-end justify-center pointer-events-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -74,8 +74,11 @@ export default function HeroSection() {
 
         {/* Layer 3 — supporting text, bottom-left. Pushed clear of the
             fixed nav rail (~left-6/8 + expands on hover) with a much
-            larger left offset than before. */}
-        <div className="absolute inset-0 z-30 flex items-end">
+            larger left offset than before. pointer-events-none for the
+            same reason as Layer 2 above — this is plain text with nothing
+            clickable in it, so there's no reason for its full-bleed
+            wrapper to block the particle canvas underneath. */}
+        <div className="absolute inset-0 z-30 flex items-end pointer-events-none">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
