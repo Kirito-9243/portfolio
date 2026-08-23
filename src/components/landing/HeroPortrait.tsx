@@ -1,27 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { hash } from "@/lib/hash";
 
-/**
- * HERO PORTRAIT — v3
- *
- * Per feedback: the previous version pixelated the source image on canvas.
- * That was correct when the source was a plain photo, but the current
- * source (Reference B) is already finished voxel artwork — running it
- * through a downscale/upscale pipeline would just muddy a crisp image.
- * This version renders `src` directly: no pixelation, no blur, no radial
- * mask, no filters on the base image.
- *
- * `src` is still the only thing that knows about the actual asset — the
- * caller (HeroSection.tsx) owns the path, so swapping in a future,
- * improved voxel render is still a one-line change here.
- *
- * The hover glitch (RGB-split ghost layers) and particle burst are kept
- * from the previous build, just re-pointed at the raw image instead of a
- * canvas-derived one — flagged as a judgment call in the main response.
- */
+// Hit-region for hover detection, traced from the actual PNG's alpha
+// channel (sampled left/right silhouette edge at 10%-height bands, +3
+// percentage points of outward margin so real edge pixels of the artwork
+// are never accidentally excluded). This intentionally does NOT chase
+// every hair-spike pixel — that would make it brittle to the next avatar
+// swap. It's a generous silhouette (narrow hair peak, flared hair,
+// narrower neck, wide shoulders) that keeps the four empty square corners
+// out of the hoverable area without being tied to exact pixel edges.
+// Re-derive these numbers (see conversation) if the avatar art changes
+// enough to alter the silhouette meaningfully.
+const AVATAR_HIT_CLIP_PATH =
+  "polygon(51.1% 2%, 72.9% 10%, 80% 20%, 82.2% 30%, 81.2% 40%, 72.9% 50%, 72.7% 60%, 79% 70%, 95.3% 80%, 98.8% 90%, 100% 100%, 0.2% 100%, 3.1% 90%, 6% 80%, 22.6% 70%, 30.4% 60%, 29% 50%, 21.1% 40%, 18.6% 30%, 24.9% 20%, 27.7% 10%)";
 
 interface HeroPortraitProps {
   src: string;
@@ -34,6 +28,44 @@ const BURST_COUNT = 14;
 export default function HeroPortrait({ src, alt = "Portrait", className }: HeroPortraitProps) {
   const [isHovering, setIsHovering] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
+  const [isAutoGlitching, setIsAutoGlitching] = useState(false);
+
+  // Ambient glitch loop — fires on its own, independent of hover, so the
+  // avatar reads as "alive" even when nobody's cursor is anywhere near it.
+  // Random delay between bursts (rather than a fixed interval) is what
+  // keeps it from feeling like a metronome; the burst itself is held just
+  // past the 0.7s CSS animation length below so the animation completes
+  // naturally instead of getting cut off mid-cycle.
+  useEffect(() => {
+    let burstTimeout: ReturnType<typeof setTimeout> | undefined;
+    let cycleTimeout: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+
+    const scheduleNext = () => {
+      const delay = 5000 + Math.random() * 6000; // ~5-11s between bursts
+      cycleTimeout = setTimeout(() => {
+        if (cancelled) return;
+        setIsAutoGlitching(true);
+        burstTimeout = setTimeout(() => {
+          if (cancelled) return;
+          setIsAutoGlitching(false);
+          scheduleNext();
+        }, 750);
+      }, delay);
+    };
+
+    scheduleNext();
+
+    return () => {
+      cancelled = true;
+      if (burstTimeout) clearTimeout(burstTimeout);
+      if (cycleTimeout) clearTimeout(cycleTimeout);
+    };
+  }, []);
+
+  // Hover still triggers its own burst (see onHoverStart below); either
+  // source can trigger the same glitch animation on the ghost layers.
+  const glitchActive = isHovering || isAutoGlitching;
 
   const burstParticles = useMemo(
     () =>
@@ -57,20 +89,21 @@ export default function HeroPortrait({ src, alt = "Portrait", className }: HeroP
   return (
     <motion.div
       className={className}
-      onHoverStart={() => {
-        setIsHovering(true);
-        setBurstKey((k) => k + 1);
-      }}
-      onHoverEnd={() => setIsHovering(false)}
       animate={{ y: [0, -10, 0] }}
       transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-      style={{ position: "relative", width: "100%", height: "100%" }}
+      style={{ position: "relative", width: "100%", height: "100%", pointerEvents: "none" }}
     >
       <div
-        className={`portrait-voxel${isHovering ? " is-hovering" : ""}`}
-        style={{ position: "relative", width: "100%", height: "100%", borderRadius: "1.25rem", overflow: "hidden" }}
+        className={`portrait-voxel${glitchActive ? " is-glitching" : ""}`}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          borderRadius: "1.25rem",
+          overflow: "hidden",
+          pointerEvents: "none",
+        }}
       >
-        {/* Reference B, used directly — no processing */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
@@ -78,13 +111,11 @@ export default function HeroPortrait({ src, alt = "Portrait", className }: HeroP
           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         />
 
-        {/* RGB-split ghost layers — same raw image, invisible until hover */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" aria-hidden className="portrait-ghost portrait-ghost--cyan" style={ghostStyle} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" aria-hidden className="portrait-ghost portrait-ghost--red" style={ghostStyle} />
 
-        {/* Particle burst */}
         {isHovering && (
           <div key={burstKey} aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             {burstParticles.map((p) => (
@@ -109,6 +140,29 @@ export default function HeroPortrait({ src, alt = "Portrait", className }: HeroP
         )}
       </div>
 
+      {/* Hover hit-region — invisible, clipped to AVATAR_HIT_CLIP_PATH so
+          only the actual visible portrait triggers the glitch/burst. Both
+          the square above (.portrait-voxel, pointer-events: none) and this
+          root motion.div (pointer-events: none) let the cursor pass
+          straight through to whatever's behind them (the particle canvas)
+          everywhere OUTSIDE this clipped shape — clip-path affects hit
+          testing the same way it affects painting, so the four empty
+          corners of the square are no longer part of the hoverable area. */}
+      <motion.div
+        aria-hidden
+        onHoverStart={() => {
+          setIsHovering(true);
+          setBurstKey((k) => k + 1);
+        }}
+        onHoverEnd={() => setIsHovering(false)}
+        style={{
+          position: "absolute",
+          inset: 0,
+          clipPath: AVATAR_HIT_CLIP_PATH,
+          pointerEvents: "auto",
+        }}
+      />
+
       <style jsx>{`
         .portrait-ghost--cyan {
           mix-blend-mode: screen;
@@ -118,26 +172,26 @@ export default function HeroPortrait({ src, alt = "Portrait", className }: HeroP
           mix-blend-mode: screen;
           filter: brightness(1.1) saturate(3) hue-rotate(-40deg);
         }
-        .is-hovering .portrait-ghost--cyan {
+        .is-glitching .portrait-ghost--cyan {
           animation: portrait-glitch-cyan 0.7s steps(2, end) 1;
         }
-        .is-hovering .portrait-ghost--red {
+        .is-glitching .portrait-ghost--red {
           animation: portrait-glitch-red 0.7s steps(2, end) 1;
         }
         @keyframes portrait-glitch-cyan {
           0% { opacity: 0; transform: translateX(0); clip-path: inset(0 0 100% 0); }
-          15% { opacity: 0.55; transform: translateX(-8px); clip-path: inset(15% 0 55% 0); }
-          35% { opacity: 0.35; transform: translateX(5px); clip-path: inset(55% 0 10% 0); }
-          55% { opacity: 0.5; transform: translateX(-4px); clip-path: inset(30% 0 40% 0); }
-          75% { opacity: 0.2; transform: translateX(2px); clip-path: inset(60% 0 5% 0); }
+          15% { opacity: 0.4; transform: translateX(-4px); clip-path: inset(15% 0 55% 0); }
+          35% { opacity: 0.22; transform: translateX(3px); clip-path: inset(55% 0 10% 0); }
+          55% { opacity: 0.32; transform: translateX(-2px); clip-path: inset(30% 0 40% 0); }
+          75% { opacity: 0.14; transform: translateX(1px); clip-path: inset(60% 0 5% 0); }
           100% { opacity: 0; transform: translateX(0); clip-path: inset(0 0 100% 0); }
         }
         @keyframes portrait-glitch-red {
           0% { opacity: 0; transform: translateX(0); clip-path: inset(100% 0 0 0); }
-          15% { opacity: 0.55; transform: translateX(8px); clip-path: inset(50% 0 20% 0); }
-          35% { opacity: 0.35; transform: translateX(-5px); clip-path: inset(8% 0 60% 0); }
-          55% { opacity: 0.5; transform: translateX(4px); clip-path: inset(35% 0 35% 0); }
-          75% { opacity: 0.2; transform: translateX(-2px); clip-path: inset(5% 0 65% 0); }
+          15% { opacity: 0.4; transform: translateX(4px); clip-path: inset(50% 0 20% 0); }
+          35% { opacity: 0.22; transform: translateX(-3px); clip-path: inset(8% 0 60% 0); }
+          55% { opacity: 0.32; transform: translateX(2px); clip-path: inset(35% 0 35% 0); }
+          75% { opacity: 0.14; transform: translateX(-1px); clip-path: inset(5% 0 65% 0); }
           100% { opacity: 0; transform: translateX(0); clip-path: inset(100% 0 0 0); }
         }
       `}</style>
