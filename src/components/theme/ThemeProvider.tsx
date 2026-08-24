@@ -1,34 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
-
-/**
- * THEME PROVIDER
- *
- * Minimal hand-rolled light/dark context — deliberately not next-themes or
- * any other package, per "do not introduce unnecessary dependencies." This
- * does the same three things any theme system needs to:
- *
- *  1. Hold the current theme in React state (`useTheme()` below).
- *  2. Reflect it onto <html> as a class (`.light` / `.dark`), which
- *     globals.css uses to swap the underlying CSS custom properties
- *     (--background, --foreground, etc.) — see globals.css.
- *  3. Persist it to localStorage, and avoid a flash of the wrong theme on
- *     load via NO_FLASH_THEME_SCRIPT, which layout.tsx injects as an
- *     inline <script> in <head> that runs before hydration.
- *
- * Default is "light" (matches the current site default), not
- * prefers-color-scheme — dark is opt-in via the toggle, by design.
- *
- * Known trade-off: ThemeToggle's icon is state-driven (sun vs. moon) and
- * reads `theme` on first client render, which can differ for one React
- * commit from the server's neutral "light" guess if the visitor's saved
- * preference is "dark" — the actual page colors never flash (the inline
- * script sets the DOM class before hydration even starts), only the toggle
- * icon could theoretically re-render once. ThemeToggle uses
- * suppressHydrationWarning for exactly that one element rather than adding
- * mount-deferral machinery for a one-frame icon swap.
- */
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type Theme = "light" | "dark";
 
@@ -44,12 +16,27 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Matches whatever the inline no-flash script already applied to <html>,
-  // so this first client render agrees with the DOM instead of fighting it.
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof document === "undefined") return DEFAULT_THEME;
-    return document.documentElement.classList.contains("dark") ? "dark" : "light";
-  });
+  // Always the deterministic default here -- both on the server AND on the
+  // client's first (hydration) render. The previous version read
+  // document.documentElement.classList in this initializer, which is fine
+  // on the server (falls back to DEFAULT_THEME) but on the client runs
+  // *after* NO_FLASH_THEME_SCRIPT has already added the real "dark"/"light"
+  // class from localStorage -- so a returning dark-mode visitor's client
+  // render disagreed with the server's "light" assumption immediately,
+  // which is exactly what a hydration mismatch is. Page colors never
+  // flashed either way (that's all driven by the CSS class the inline
+  // script sets before hydration even starts, not by this state), so the
+  // only thing this ever affected was this one render.
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
+
+  // Runs once, after hydration has already committed -- so updating state
+  // here is a normal client-side re-render, not something React has to
+  // reconcile against server-rendered HTML. This picks up whatever the
+  // no-flash script already put on <html>.
+  useEffect(() => {
+    const current = document.documentElement.classList.contains("dark") ? "dark" : "light";
+    setThemeState(current);
+  }, []);
 
   const applyTheme = useCallback((next: Theme) => {
     setThemeState(next);
@@ -81,9 +68,4 @@ export function useTheme(): ThemeContextValue {
   return ctx;
 }
 
-/**
- * Injected via <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME_SCRIPT }} />
- * in layout.tsx's <head>. Runs before React hydrates, so the correct class
- * is already on <html> by first paint — no flash of the wrong theme.
- */
 export const NO_FLASH_THEME_SCRIPT = `(function(){try{var t=window.localStorage.getItem('${STORAGE_KEY}')==='dark'?'dark':'light';document.documentElement.classList.add(t);}catch(e){document.documentElement.classList.add('${DEFAULT_THEME}');}})();`;
